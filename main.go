@@ -138,13 +138,15 @@ func listFilesRecursively(inputDir string) ([]string, error) {
 		}
 
 		for _, entry := range entries {
+			fullPath := path.Join(inputDir, entry.Name())
+
 			if entry.IsDir() {
-				err := readDir(entry.Name())
+				err := readDir(fullPath)
 				if err != nil {
 					return err
 				}
 			} else {
-				list = append(list, path.Join(inputDir, entry.Name()))
+				list = append(list, fullPath)
 			}
 		}
 
