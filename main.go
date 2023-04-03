@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
-	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geo"
 )
@@ -72,13 +71,13 @@ func main() {
 	}
 
 	officeLocation := orb.Point{latitude, longitude}
-	daysInTheOffice := mapset.NewSet[string]()
+	daysInTheOffice := make(dayMap)
 
 	for _, fileName := range fileNames {
 		processFile(fileName, startDate, endDate, officeLocation, tolerance, daysInTheOffice)
 	}
 
-	log.Infof("You have been in the office on %d day(s)", daysInTheOffice.Cardinality())
+	log.Infof("You have been in the office on %d day(s) of which %d have been working days.", len(daysInTheOffice), daysInTheOffice.CountWorkingDays())
 
 	if *printDatesFlag {
 		list := daysInTheOffice.ToSlice()
@@ -86,12 +85,48 @@ func main() {
 		sort.Strings(list)
 
 		for _, date := range list {
-			fmt.Println(date)
+			fmt.Print(date)
+
+			if !daysInTheOffice[date] {
+				fmt.Print(" (weekend)")
+			}
+
+			fmt.Print("\n")
 		}
 	}
 }
 
-func processFile(fileName string, startDate, endDate time.Time, officeLocation orb.Point, tolerance float64, daysInTheOffice mapset.Set[string]) {
+// dayMap maps a stringified date to a boolean indicating whether it was a working day
+type dayMap map[string]bool
+
+func (d dayMap) Add(t time.Time) {
+	date := t.Format("2006-01-02")
+	d[date] = t.Weekday() != time.Saturday && t.Weekday() != time.Sunday
+}
+
+func (d dayMap) ToSlice() []string {
+	slice := make([]string, 0, len(d))
+
+	for key := range d {
+		slice = append(slice, key)
+	}
+
+	return slice
+}
+
+func (d dayMap) CountWorkingDays() int {
+	count := 0
+
+	for _, isWorkingDay := range d {
+		if isWorkingDay {
+			count++
+		}
+	}
+
+	return count
+}
+
+func processFile(fileName string, startDate, endDate time.Time, officeLocation orb.Point, tolerance float64, daysInTheOffice dayMap) {
 	logger := log.With("file", fileName)
 
 	file, err := os.OpenFile(fileName, os.O_RDONLY, 0)
@@ -118,7 +153,7 @@ func processFile(fileName string, startDate, endDate time.Time, officeLocation o
 		distance := geo.DistanceHaversine(officeLocation, loc)
 
 		if distance <= tolerance {
-			daysInTheOffice.Add(place.Duration.Start.Format("2006-01-02"))
+			daysInTheOffice.Add(place.Duration.Start)
 		}
 
 		placesProcessed++
