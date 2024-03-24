@@ -2,7 +2,7 @@
 
 `days-in-office` is a small utility to calculate the amount of days you have been in office.
 
-The input used is the takeout from Google Maps Timeline.
+The input used is the takeout from Google Maps Timeline (in German "Standortverlauf/Zeitachse").
 You can request it from Google here: https://takeout.google.com/settings/takeout
 
 For this tool you only need the location history JSON file, i.e. the Google Maps Timeline export.
@@ -22,8 +22,8 @@ Usage:
 
 ```shell
 days-in-office \
-  -start-date "2022-01-02T00:00:00Z" \
-  -end-date "2022-12-31T12:59:59Z" \
+  -start-date "2023-01-02T00:00:00Z" \
+  -end-date "2023-12-31T12:59:59Z" \
   -input-dir "./Semantic Location History/" \
   -tolerance 100 \
   -latitude 48.1794935434762 \
