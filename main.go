@@ -148,7 +148,7 @@ func processFile(fileName string, startDate, endDate time.Time, officeLocation o
 			continue
 		}
 
-		loc := orb.Point{place.CenterLatE7 / 1e7, place.CenterLngE7 / 1e7}
+		loc := orb.Point{float64(place.CenterLatE7) / 1e7, float64(place.CenterLngE7) / 1e7}
 
 		distance := geo.DistanceHaversine(officeLocation, loc)
 
@@ -211,9 +211,18 @@ func ParseTimelineInput(input io.Reader) ([]*timelineVisitedPlace, error) {
 	// Remove nil entries, i.e. entries that are not place visits but activity segments or something else
 	var result []*timelineVisitedPlace
 	for _, entry := range w.TimelineObjects {
-		if entry.PlaceVisit != nil {
-			result = append(result, entry.PlaceVisit)
+		if entry.PlaceVisit == nil {
+			continue
 		}
+		
+		// Google removed these two fields at some point, so we simply take the second best option.
+		// See below.
+		if entry.PlaceVisit.CenterLatE7 == 0 || entry.PlaceVisit.CenterLngE7 == 0 {
+			entry.PlaceVisit.CenterLatE7 = entry.PlaceVisit.Location.LatitudeE7
+			entry.PlaceVisit.CenterLngE7 = entry.PlaceVisit.Location.LongitudeE7
+		}
+
+		result = append(result, entry.PlaceVisit)
 	}
 
 	return result, nil
@@ -225,12 +234,14 @@ type timelineVisitedPlace struct {
 		LongitudeE7 int    `json:"longitudeE7"`
 		Address     string `json:"address"`
 		Name        string `json:"name"`
-	}
+	} `json:"location"`
 	Duration struct {
 		Start time.Time `json:"startTimestamp"`
 		End   time.Time `json:"endTimestamp"`
-	}
-	VisitConfidence int     `json:"visitConfidence"`
-	CenterLatE7     float64 `json:"centerLatE7"`
-	CenterLngE7     float64 `json:"centerLngE7"`
+	} `json:"duration"`
+	VisitConfidence int `json:"visitConfidence"`
+	// It seems like Google removed these two fields on the 7th of February 2024 as they don't show up in records
+	// after this date.
+	CenterLatE7 int `json:"centerLatE7"`
+	CenterLngE7 int `json:"centerLngE7"`
 }
